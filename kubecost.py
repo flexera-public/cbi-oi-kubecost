@@ -129,14 +129,14 @@ def upload_files(refresh_token, host, org_id, bill_connect_id, aggregation, kube
     logging.info("Response: {}\n{}".format(
         r.status_code, json.dumps(r.json(), indent=4)))
     if r.status_code == 429:
-        sleep_time = int(r.json()["message"].split(' ')[-1][:-1]) + 1
-        time.sleep(sleep_time)
+        time.sleep(120)
         r = requests.post(bill_upload_url, json.dumps(bill_upload), **kwargs)
+        r.raise_for_status()
     elif r.status_code == 409:
         existing_id = r.json()["message"].split(' ')[4][:-1]
     else:
         r.raise_for_status()
-    if existing_id:
+    if 'existing_id' in locals():
         bill_upload_id = existing_id
     else:
         bill_upload_id = r.json()["id"]
