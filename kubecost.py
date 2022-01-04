@@ -3,7 +3,7 @@ import json
 import logging
 import requests
 import sys
-
+import time
 import csv
 import datetime
 from dateutil.relativedelta import relativedelta
@@ -128,8 +128,21 @@ def upload_files(refresh_token, host, org_id, bill_connect_id, aggregation, kube
     r = requests.post(bill_upload_url, json.dumps(bill_upload), **kwargs)
     logging.info("Response: {}\n{}".format(
         r.status_code, json.dumps(r.json(), indent=4)))
-    r.raise_for_status()
-    bill_upload_id = r.json()["id"]
+    if r.status_code == 429:
+        sleep_time = r.json()["message"].split(' ')[-1][:-1] + 1
+        time.sleep(sleep_time)
+        r = requests.post(bill_upload_url, json.dumps(bill_upload), **kwargs)
+    elif r.status_code == 409:
+        existing_id = r.json()["message"].split(' ')[4][:-1]
+    else:
+        r.raise_for_status()
+    if existing_id:
+        bill_upload_id = existing_id
+    else:
+        bill_upload_id = r.json()["id"]
+
+    logging.info("Bill Upload ID: {}".format(bill_upload_id))
+    sys.exit(0)
 
     for fileName in files_to_upload:
         base_name = os.path.basename(fileName)
